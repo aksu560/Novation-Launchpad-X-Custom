@@ -8,12 +8,10 @@ class LaunchpadX():
         pass
 
     def reset(self) -> None:
-        device.midiOutSysex(bytes([240, 0, 32, 41, 2, 12, 0, 1, 247]))        # Set View To Note Mode
-        device.midiOutSysex(bytes([240, 0, 32, 41, 2, 12, 15, 0, 247]))       # Set Note Mode To Scale
-        device.midiOutSysex(bytes([240, 0, 32, 41, 2, 12, 18, 1, 1, 1, 247])) # Clear Session, Drum, and CC
-        device.midiOutSysex(bytes([240, 0, 32, 41, 2, 12, 23, 0, 247]))       # Change Note Active color
-        device.midiOutSysex(bytes([240, 0, 32, 41, 2, 12, 20, 0, 0, 247]))
-
+        sysex.select_mode(1)
+        sysex.daw_clear()
+        sysex.active_note_color(0)
+        sysex.session_colors()
         lights.clear_lights(0)
 
     def OnInit(self):
