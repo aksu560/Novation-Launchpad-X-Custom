@@ -2,9 +2,10 @@ import coordinates
 import lights
 import sysex
 from typing import Callable
+from debug import print_event
 
 class Pad():
-    def __init__(self, light:lights.PadLight, callback: Callable[[int], None]) -> None:
+    def __init__(self, light:lights.PadLight, callback: Callable) -> None:
         self.light = light
         self.callback = callback
 
@@ -19,15 +20,26 @@ class Element():
         self.module = module
 
 class Page():
-    def __init__(self, elements:list[Element], mode = 0, session_lights = (0, 0)) -> None:
+    """
+    Page class. Pages are used for creating custom behaviour for session mode.
+    Switching between them is done with the LaunchpadX.LoadPage() function.
+
+    NOTE: A page gets instantiated when it is loaded. This means that changing out of
+    a page, and back to it will reinstantiate it, losing any state. As such the page
+    objects themselves should be stateless, simply functioning as an interface between
+    FL and the controller. The Settings object can also be used for storing some limited state.
+    """
+    def __init__(self, controller, elements:list[Element], mode = 0, session_lights = (0, 0)) -> None:
+        self.controller = controller
         self.mode = mode
         self.elements = elements
         self.lights = {}
         self.callbacks = {}
+        self.refresh_callback = lambda: None
         self.session_lights = session_lights
+        self.held_keys = set()
         for elem in elements:
             for pad in elem.module.pads:
-                print(pad)
                 (x, y, pad) = pad
                 x = elem.x + x
                 y = elem.y + y
@@ -35,12 +47,127 @@ class Page():
                 self.lights[coords] = pad.light
                 self.callbacks[coords] = pad.callback
 
-        self.refresh()
-    
-
     def refresh(self):
         lights.clear_lights(self.mode)
         sysex.session_colors(self.session_lights[0], self.session_lights[1])
         for key, light in self.lights.items():
             (x, y) = coordinates.pad_coords_to_xy(key)
             lights.set_light(x, y, self.mode, light)
+        
+        self.refresh_callback()
+
+    def key_event(self, eventData):
+        match eventData.status:
+            # Polyphonic Aftertouch.
+            case 160:
+                if eventData.note not in self.held_keys:
+                    self.held_keys.add(eventData.note)
+            # Edge Buttons
+            case 176:
+                # Release event
+                if eventData.velocity == 0:
+                    self.held_keys.discard(eventData.note)
+                    self.key_activate(eventData, True)
+                # Press event
+                else:
+                    self.held_keys.add(eventData.note)
+                    self.key_activate(eventData, False)
+            case 144:
+                # Release event
+                if eventData.velocity == 0:
+                    self.held_keys.discard(eventData.note)
+                    self.key_activate(eventData, True)
+                # Press event
+                else:
+                    self.held_keys.add(eventData.note)
+                    self.key_activate(eventData, False)
+        
+        eventData.handled = True        
+
+    def key_activate(self, event, release):
+        # Negative edge check. Session button ignores negative edge for reasons.
+        if self.controller.settings.get_setting("page.negative_edge") == release or event.note == 95:
+            if event.note in self.callbacks.keys():
+                if self.callbacks[event.note](event):
+                    self.refresh()        
+
+    def shift_pressed(self) -> bool:
+        return 98 in self.held_keys
+
+    def OnInit(self):
+        pass
+
+    def OnDeInit(self):
+        pass
+
+    def OnMidiIn(self, eventData):
+        pass
+
+    def OnMidiMsg(self, eventData):
+        self.key_event(eventData)
+
+    def OnSysEx(self, eventData):
+        pass
+
+    def OnNoteOn(self, eventData):
+        pass
+    
+    def OnNoteOff(self, eventData):
+        pass
+
+    def OnControlChange(self, eventData):
+        pass
+
+    def OnProgramChange(self, eventData):
+        pass
+
+    def OnPitchBend(self, eventData):
+        pass
+
+    def OnKeyPressure(self, eventData):
+        pass
+
+    def OnChannelPressure(self, eventData):
+        pass
+
+    def OnMidiOutMsg(self, eventData):
+        pass
+
+    def OnIdle(self):
+        pass
+
+    def OnProjectLoad(self, status):
+        pass
+
+    def OnRefresh(self, flags):
+        pass
+
+    def OnDoFullRefresh(self):
+        pass
+
+    def OnUpdateBeatIndicator(self, value):
+        pass
+
+    def OnDisplayZone(self):
+        pass
+
+    def OnUpdateLiveMode(self, lastTrack):
+        pass
+
+    def OnDirtyMixerTrack(self, index):
+        pass
+
+    def OnDirtyChannel(self, index, flag):
+        pass
+
+    def OnFirstConnect(self):
+        pass
+
+    def OnUpdateMeters(self):
+        pass
+
+    def OnWaitingForInput(self):
+        pass
+
+    def OnSendTempMsg(self, message, duration):
+        pass
