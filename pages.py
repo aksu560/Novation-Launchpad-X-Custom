@@ -14,20 +14,16 @@ class Module():
         self.pads = pads
 
 class Element():
-    def __init__(self, x: int, y: int, module: Module) -> None:
+    def __init__(self, x: int, y: int, module: Module, shift = False) -> None:
         self.x = x
         self.y = y
+        self.shift = shift
         self.module = module
 
 class Page():
     """
     Page class. Pages are used for creating custom behaviour for session mode.
     Switching between them is done with the LaunchpadX.LoadPage() function.
-
-    NOTE: A page gets instantiated when it is loaded. This means that changing out of
-    a page, and back to it will reinstantiate it, losing any state. As such the page
-    objects themselves should be stateless, simply functioning as an interface between
-    FL and the controller. The Settings object can also be used for storing some limited state.
     """
     def __init__(self, controller, elements:list[Element], mode = 0, session_lights = (0, 0)) -> None:
         self.controller = controller
@@ -38,21 +34,29 @@ class Page():
         self.refresh_callback = lambda: None
         self.session_lights = session_lights
         self.held_keys = set()
+        self.enable_shift = True
         for elem in elements:
             for pad in elem.module.pads:
                 (x, y, pad) = pad
                 x = elem.x + x
                 y = elem.y + y
-                coords = coordinates.xy_to_pad_coords(x, y)
+                # Keys under shift are shifted 100 positions upwards.
+                coords = coordinates.xy_to_pad_coords(x, y) + (elem.shift * 100)
                 self.lights[coords] = pad.light
                 self.callbacks[coords] = pad.callback
 
     def refresh(self):
         lights.clear_lights(self.mode)
         sysex.session_colors(self.session_lights[0], self.session_lights[1])
-        for key, light in self.lights.items():
-            (x, y) = coordinates.pad_coords_to_xy(key)
-            lights.set_light(x, y, self.mode, light)
+
+        for x in range(1, 10):
+            for y in range(1, 10):
+                if coordinates.xy_to_pad_coords(x, y) + (self.is_shift_pressed() * 100) in self.lights.keys():
+                    light = self.lights[coordinates.xy_to_pad_coords(x, y) + (self.is_shift_pressed() * 100)]
+                else:
+                    light = lights.PadLight("0")
+                lights.set_light(x, y, self.mode, light)
+            
         
         self.refresh_callback()
 
@@ -85,14 +89,22 @@ class Page():
         eventData.handled = True        
 
     def key_activate(self, event, release):
+
+        if event.note == 98:
+            self.on_shift()
+            return
+
         # Negative edge check. Session button ignores negative edge for reasons.
         if self.controller.settings.get_setting("page.negative_edge") == release or event.note == 95:
             if event.note in self.callbacks.keys():
                 if self.callbacks[event.note](event):
-                    self.refresh()        
+                    self.refresh()
 
-    def shift_pressed(self) -> bool:
-        return 98 in self.held_keys
+    def is_shift_pressed(self) -> bool:
+        return self.enable_shift and 98 in self.held_keys
+    
+    def on_shift(self):
+        self.refresh()
 
     def OnInit(self):
         pass

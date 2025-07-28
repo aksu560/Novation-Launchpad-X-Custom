@@ -6,13 +6,21 @@ class TestingPage(Page):
     def __init__(self, controller) -> None:
 
         test_elem = Element(
-            5, 9,
+            1, 1,
             Module([
                 (0, 0, Pad(PadLight("JADE"), self.test_cb_1)),
             ])
         )
 
-        super().__init__(controller, [test_elem])
+        shift_elem = Element(
+            1, 1,
+            Module([
+                (0, 0, Pad(PadLight("RED"), self.test_cb_1)),
+            ]),
+            True
+        )
+
+        super().__init__(controller, [test_elem, shift_elem])
 
     def test_cb_1(self, _):
         print("foo")
