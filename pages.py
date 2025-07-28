@@ -89,13 +89,12 @@ class Page():
         eventData.handled = True        
 
     def key_activate(self, event, release):
-
         if event.note == 98:
             self.on_shift()
             return
-
         # Negative edge check. Session button ignores negative edge for reasons.
         if self.controller.settings.get_setting("page.negative_edge") == release or event.note == 95:
+            event.note += 100 * self.is_shift_pressed()
             if event.note in self.callbacks.keys():
                 if self.callbacks[event.note](event):
                     self.refresh()
