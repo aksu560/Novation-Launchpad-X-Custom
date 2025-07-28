@@ -15,7 +15,7 @@ class TestingPage(Page):
         shift_elem = Element(
             1, 1,
             Module([
-                (0, 0, Pad(PadLight("RED"), self.test_cb_1)),
+                (0, 0, Pad(PadLight("RED"), self.test_cb_shift)),
             ]),
             True
         )
@@ -24,3 +24,6 @@ class TestingPage(Page):
 
     def test_cb_1(self, _):
         print("foo")
+    
+    def test_cb_shift(self, _):
+        print("FOO")
