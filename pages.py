@@ -55,6 +55,15 @@ class Page():
                     light = self.lights[coordinates.xy_to_pad_coords(x, y) + (self.is_shift_pressed() * 100)]
                 else:
                     light = lights.PadLight("0")
+
+                # Shift Light
+                if y == 9 and x == 8:
+                    match self.is_shift_pressed():
+                        case True:
+                            light = lights.PadLight("WHITE")
+                        case False:
+                            light = lights.PadLight("0")
+
                 lights.set_light(x, y, self.mode, light)
             
         
